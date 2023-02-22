@@ -1,7 +1,7 @@
 import csv
 
-acData_path = 'Aircraft List.csv'
-flightData_path = 'Heathrow Flights.csv'
+ac_data_path = 'Aircraft List.csv'
+flight_data_path = 'Heathrow Flights.csv'
 
 wakeCat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -26,32 +26,32 @@ wake_sep_matrix = [
 
 
 def import_data():
-    # Imports flight data as [Callsign, A/C Type, SID, SID Index, Wake Category Index, Speed Group]
-    global acData
-    global flightData
+    # Imports flight data as [Call-sign, A/C Type, SID, SID Index, Wake Category Index, Speed Group]
+    global flight_data
 
     print('Importing flight schedule and aircraft data...')
-    reader = csv.reader(open(acData_path, 'r'))
-    acData = list(reader)
-    reader = csv.reader(open(flightData_path, 'r'))
-    flightData = list(reader)
+    reader = csv.reader(open(ac_data_path, 'r'))
+    ac_data = list(reader)
+    reader = csv.reader(open(flight_data_path, 'r'))
+    flight_data = list(reader)
 
-    for i in range(len(acData)):
-        acData[i][1] = int(acData[i][1])
+    for i in range(len(ac_data)):
+        ac_data[i][1] = int(ac_data[i][1])
         for j in wakeCat_list:
-            if acData[i][2] == j:
-                acData[i][2] = wakeCat_list.index(j)
-    print('{} aircraft imported'.format(len(acData)))
+            if ac_data[i][2] == j:
+                ac_data[i][2] = wakeCat_list.index(j)
+    print('{} aircraft imported'.format(len(ac_data)))
 
-    for i in range(len(flightData)):
+    for i in range(len(flight_data)):
         for j in sid_list:
-            if flightData[i][2] == j:
-                flightData[i].append(sid_list.index(j))
-        for j in acData:
-            if flightData[i][1] == j[0]:
-                flightData[i].append(j[2])
-                flightData[i].append(j[1])
-    print('{} flights imported'.format(len(flightData)))
+            if flight_data[i][2] == j:
+                flight_data[i].append(sid_list.index(j))
+        for j in ac_data:
+            if flight_data[i][1] == j[0]:
+                flight_data[i].append(j[2])
+                flight_data[i].append(j[1])
+    print('{} flights imported'.format(len(flight_data)))
+
 
 def route_sep(route_list, leader_i, follower_i):
     l_sid = route_list[leader_i][3]
@@ -94,5 +94,6 @@ def sigma_interval(route_list):
     print('Cumulative interval {}s'.format(sigma))
     return sigma
 
+
 import_data()
-sigma_interval(flightData)
+sigma_interval(flight_data)
