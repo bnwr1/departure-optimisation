@@ -1,7 +1,7 @@
 import csv
 from itertools import permutations
 
-debugging = True
+debugging = False
 
 ac_data_path = 'Aircraft List.csv'
 flight_data_path = 'Heathrow Flights.csv'
@@ -88,14 +88,14 @@ def interval(route_list, leader_i, follower_i):
         elif sep_list.index(max(sep_list)) == 1:
             constraint = 'speed separation'
         print('{}, {}, {}s due {}'.format(route_list[leader_i][0],
-        route_list[follower_i][0], max(sep_list), constraint))
+                                          route_list[follower_i][0], max(sep_list), constraint))
     return max(sep_list)
 
 
 def sigma_interval(route_list):
     sigma = 0
     for i in range(len(route_list) - 1):
-        sigma += interval(route_list, i, i+1)
+        sigma += interval(route_list, i, i + 1)
     if debugging is True:
         print('Cumulative interval: {}s'.format(sigma))
     return sigma
@@ -122,7 +122,7 @@ def split_list(route_list, category, value):
 
 
 def optimise_perm(route_list):
-    sigmia_initial = sigma_interval(route_list)
+    sigma_initial = sigma_interval(route_list)
     order_optimum = []
     sigma_min = 0
     perm = permutations(route_list)
@@ -131,7 +131,7 @@ def optimise_perm(route_list):
             order_optimum = list(i)
             sigma_min = sigma_interval(i)
     print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over default order'
-          .format(sigma_min, round(100-(sigma_min*100/sigmia_initial), 2)))
+          .format(sigma_min, round(100 - (sigma_min * 100 / sigma_initial), 2)))
     if debugging is True:
         print('Optimum order: {}'.format(order_optimum))
     return order_optimum
@@ -146,7 +146,7 @@ for i in range(len(flight_data)):
         count+=1
 print(count)'''
 
-#BPK/UMLAT: 186
-#CPT/GOGSI: 110
-#MAXIT: 92
-#DET: 169
+# BPK/UMLAT: 186
+# CPT/GOGSI: 110
+# MAXIT: 92
+# DET: 169
