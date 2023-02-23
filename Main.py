@@ -1,9 +1,12 @@
 import csv
+from itertools import permutations
+
+debugging = True
 
 ac_data_path = 'Aircraft List.csv'
 flight_data_path = 'Heathrow Flights.csv'
 
-wakeCat_list = ['J', 'H', 'U', 'M', 'S', 'L']
+wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
 
 route_sep_matrix = [
@@ -37,9 +40,9 @@ def import_data():
 
     for i in range(len(ac_data)):
         ac_data[i][1] = int(ac_data[i][1])
-        for j in wakeCat_list:
+        for j in wake_cat_list:
             if ac_data[i][2] == j:
-                ac_data[i][2] = wakeCat_list.index(j)
+                ac_data[i][2] = wake_cat_list.index(j)
     print('{} aircraft imported'.format(len(ac_data)))
 
     for i in range(len(flight_data)):
@@ -76,28 +79,41 @@ def speed_sep(route_list, leader_i, follower_i):
 def interval(route_list, leader_i, follower_i):
     sep_list = [route_sep(route_list, leader_i, follower_i), wake_sep(route_list, leader_i, follower_i),
                 speed_sep(route_list, leader_i, follower_i)]
-    constraint = ''
-    if sep_list.index(max(sep_list)) == 0:
-        constraint = 'route separation'
-    elif sep_list.index(max(sep_list)) == 1:
-        constraint = 'wake separation'
-    elif sep_list.index(max(sep_list)) == 1:
-        constraint = 'speed separation'
-    '''print('{}, {}, {}s due {}'.format(route_list[leader_i][0],
-    route_list[follower_i][0], max(sep_list), constraint))'''
+    if debugging is True:
+        constraint = ''
+        if sep_list.index(max(sep_list)) == 0:
+            constraint = 'route separation'
+        elif sep_list.index(max(sep_list)) == 1:
+            constraint = 'wake separation'
+        elif sep_list.index(max(sep_list)) == 1:
+            constraint = 'speed separation'
+        print('{}, {}, {}s due {}'.format(route_list[leader_i][0],
+        route_list[follower_i][0], max(sep_list), constraint))
     return max(sep_list)
 
 
 def sigma_interval(route_list):
-    print('Calculating interval...')
     sigma = 0
     for i in range(len(route_list) - 1):
         sigma += interval(route_list, i, i+1)
-    print('Cumulative interval: {}s'.format(sigma))
+    if debugging is True:
+        print('Cumulative interval: {}s'.format(sigma))
     return sigma
 
 
 def split_list(route_list, category, value):
+    category_text = ''
+    value_text = ''
+    if category == 3:
+        category_text = 'SID'
+        value_text = sid_list[value]
+    elif category == 4:
+        category_text = 'wake category'
+        value_text = wake_cat_list[value]
+    elif category == 5:
+        category_text = 'speed group'
+        value_text = str(value)
+    print('Filtering data via {}: {}'.format(category_text, value_text))
     sublist = []
     for i in route_list:
         if i[category] == value:
@@ -105,13 +121,28 @@ def split_list(route_list, category, value):
     return sublist
 
 
+def optimise_perm(route_list):
+    sigmia_initial = sigma_interval(route_list)
+    order_optimum = []
+    sigma_min = 0
+    perm = permutations(route_list)
+    for i in perm:
+        if sigma_interval(i) < sigma_min or sigma_min == 0:
+            order_optimum = list(i)
+            sigma_min = sigma_interval(i)
+    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over default order'
+          .format(sigma_min, round(100-(sigma_min*100/sigmia_initial), 2)))
+    if debugging is True:
+        print('Optimum order: {}'.format(order_optimum))
+    return order_optimum
+
+
 import_data()
-sigma_interval(flight_data)
-print(split_list(flight_data, 4, 0))
+optimise_perm(split_list(flight_data, 4, 4))
 
 '''count = 0
 for i in range(len(flight_data)):
-    if flight_data[i][3] == 5:
+    if flight_data[i][4] == 0:
         count+=1
 print(count)'''
 
