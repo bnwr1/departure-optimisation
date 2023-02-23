@@ -83,17 +83,39 @@ def interval(route_list, leader_i, follower_i):
         constraint = 'wake separation'
     elif sep_list.index(max(sep_list)) == 1:
         constraint = 'speed separation'
-    print('{}, {}, {}s due {}'.format(route_list[leader_i][0], route_list[follower_i][0], max(sep_list), constraint))
+    '''print('{}, {}, {}s due {}'.format(route_list[leader_i][0],
+    route_list[follower_i][0], max(sep_list), constraint))'''
     return max(sep_list)
 
 
 def sigma_interval(route_list):
+    print('Calculating interval...')
     sigma = 0
     for i in range(len(route_list) - 1):
         sigma += interval(route_list, i, i+1)
-    print('Cumulative interval {}s'.format(sigma))
+    print('Cumulative interval: {}s'.format(sigma))
     return sigma
+
+
+def split_list(route_list, category, value):
+    sublist = []
+    for i in route_list:
+        if i[category] == value:
+            sublist.append(i)
+    return sublist
 
 
 import_data()
 sigma_interval(flight_data)
+print(split_list(flight_data, 4, 0))
+
+'''count = 0
+for i in range(len(flight_data)):
+    if flight_data[i][3] == 5:
+        count+=1
+print(count)'''
+
+#BPK/UMLAT: 186
+#CPT/GOGSI: 110
+#MAXIT: 92
+#DET: 169
