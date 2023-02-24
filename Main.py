@@ -1,11 +1,11 @@
 import csv
-from itertools import permutations, combinations
-from math import comb
+import math
+from itertools import permutations
 
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights Test.csv'
+flight_data_path = 'Heathrow Flights.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -124,44 +124,79 @@ def split_list(route_list, category, value):
 
 def optimise_perm(route_list):
     print('Optimising {} aircraft via permutations'.format(len(route_list)))
-    sigma_initial = sigma_interval(route_list)
-    order_optimum = []
-    sigma_min = 0
+    initial_sigma = sigma_interval(route_list)
+    optimum_order = []
+    optimal_sigma = 0
     perm = permutations(route_list)
     for i in perm:
-        if sigma_interval(i) < sigma_min or sigma_min == 0:
-            order_optimum = list(i)
-            sigma_min = sigma_interval(i)
-    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over given order'
-          .format(sigma_min, round(100 - (sigma_min * 100 / sigma_initial), 2)))
+        if sigma_interval(i) < optimal_sigma or optimal_sigma == 0:
+            optimum_order = list(i)
+            optimal_sigma = sigma_interval(i)
+    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over starting order'
+          .format(optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     if debugging is True:
-        print('Optimum order: {}'.format(order_optimum))
-    return order_optimum
+        print('Optimum order: {}'.format(optimum_order))
+    return optimum_order
 
 
-def tabu_search(flight_list, iteration_lim):
-    iterations = 0
+def swap(flight_list, i ,j):
+    flight_new = flight_list[:]
+    flight_new[i], flight_new[j] = flight_new[j], flight_new[i]
+    return flight_new
+
+
+def optimise_tabu(flight_list, iteration_lim, tenure_percent):
+    iteration = 1
     optimal_solution = []
     optimal_sigma = 0
     current_solution = flight_list[:]
-    current_sigma = 0
+    initial_sigma = sigma_interval(current_solution)
     tabu = []
-    while iterations <= iteration_lim:
-        index = list(range(len(flight_list)))
-        index_swaps = []
+    tenure = math.floor(tenure_percent * len(current_solution))
+
+    print('Optimising via tabu search with {} iterations and tenure length {}...'.format(iteration_lim, tenure))
+    if debugging is True:
+        print('Starting order: ', flight_list)
+
+    while iteration <= iteration_lim:
+        if debugging is True:
+            print('Beginning iteration {}...'.format(iteration))
+            print('Current solution: {}'.format(current_solution))
+        index = list(range(len(current_solution)))
+        index_pairs = []
+        pairs_sigma = []
         for i in index[:-1]:
             for j in index[i+1:]:
-                index_swaps.append([i,j])
-        for i in index_swaps:
+                index_pairs.append([i,j])
+        for i in index_pairs:
             if i in tabu:
-                index_swaps.remove(i)
-        print(index_swaps)
-
-        iterations += 1
+                index_pairs.remove(i)
+        for i in index_pairs:
+            pairs_sigma.append(sigma_interval(swap(current_solution, i[0], i[1])))
+        current_swap = index_pairs[pairs_sigma.index(min(pairs_sigma))]
+        current_solution = swap(current_solution, current_swap[0], current_swap[1])
+        current_sigma = sigma_interval(current_solution)
+        if debugging is True:
+            print('Best swap {}, with cumulative interval: {}s'.format(current_swap, current_sigma))
+        tabu.append(current_swap)
+        if len(tabu) > tenure:
+            del tabu[0]
+        if current_sigma < optimal_sigma or optimal_sigma == 0:
+            optimal_sigma = current_sigma
+            optimal_solution = current_solution[:]
+            if debugging is True:
+                print('Tabu: {}'.format(tabu))
+                print('New optimal solution found: {}'.format(optimal_solution))
+        iteration += 1
+    
+    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over starting order'
+          .format(optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+    return optimal_solution
 
 
 import_data()
-tabu_search(flight_data, 0)
+optimise_tabu(split_list(flight_data, 4, 2), 1000, 0.8)
+
 
 # BPK/UMLAT: 186
 # CPT/GOGSI: 110
