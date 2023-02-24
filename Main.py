@@ -1,10 +1,11 @@
 import csv
-from itertools import permutations
+from itertools import permutations, combinations
+from math import comb
 
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights.csv'
+flight_data_path = 'Heathrow Flights Test.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -122,6 +123,7 @@ def split_list(route_list, category, value):
 
 
 def optimise_perm(route_list):
+    print('Optimising {} aircraft via permutations'.format(len(route_list)))
     sigma_initial = sigma_interval(route_list)
     order_optimum = []
     sigma_min = 0
@@ -130,21 +132,36 @@ def optimise_perm(route_list):
         if sigma_interval(i) < sigma_min or sigma_min == 0:
             order_optimum = list(i)
             sigma_min = sigma_interval(i)
-    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over default order'
+    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over given order'
           .format(sigma_min, round(100 - (sigma_min * 100 / sigma_initial), 2)))
     if debugging is True:
         print('Optimum order: {}'.format(order_optimum))
     return order_optimum
 
 
-import_data()
-optimise_perm(split_list(flight_data, 4, 4))
+def tabu_search(flight_list, iteration_lim):
+    iterations = 0
+    optimal_solution = []
+    optimal_sigma = 0
+    current_solution = flight_list[:]
+    current_sigma = 0
+    tabu = []
+    while iterations <= iteration_lim:
+        index = list(range(len(flight_list)))
+        index_swaps = []
+        for i in index[:-1]:
+            for j in index[i+1:]:
+                index_swaps.append([i,j])
+        for i in index_swaps:
+            if i in tabu:
+                index_swaps.remove(i)
+        print(index_swaps)
 
-'''count = 0
-for i in range(len(flight_data)):
-    if flight_data[i][4] == 0:
-        count+=1
-print(count)'''
+        iterations += 1
+
+
+import_data()
+tabu_search(flight_data, 0)
 
 # BPK/UMLAT: 186
 # CPT/GOGSI: 110
