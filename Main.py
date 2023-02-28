@@ -145,14 +145,15 @@ def swap(flight_list, i ,j):
     return flight_new
 
 
-def optimise_tabu(flight_list, iteration_lim, tenure_percent):
+def optimise_tabu(flight_list, iteration_percent, tenure_percent):
     iteration = 1
+    iteration_lim = math.floor(iteration_percent * len(flight_list))
+    tenure = math.floor(tenure_percent * len(flight_list))
+    tabu = []
     optimal_solution = []
     optimal_sigma = 0
     current_solution = flight_list[:]
     initial_sigma = sigma_interval(current_solution)
-    tabu = []
-    tenure = math.floor(tenure_percent * len(current_solution))
 
     print('Optimising via tabu search with {} iterations and tenure length {}...'.format(iteration_lim, tenure))
     if debugging is True:
