@@ -155,7 +155,7 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
     current_solution = flight_list[:]
     initial_sigma = sigma_interval(current_solution)
 
-    print('Optimising via tabu search with {} iterations and tenure length {}...'.format(iteration_lim, tenure))
+    print('Optimising via tabu search: {} iterations, tenure length {}...'.format(iteration_lim, tenure))
     if debugging is True:
         print('Starting order: ', flight_list)
 
@@ -196,7 +196,7 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
 
 
 import_data()
-optimise_tabu(split_list(flight_data, 4, 2), 1000, 0.8)
+optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8)
 
 
 # BPK/UMLAT: 186
