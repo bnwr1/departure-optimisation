@@ -1,11 +1,12 @@
 import csv
-import math
+from math import floor, log
 from itertools import permutations
+from timeit import default_timer
 
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights.csv'
+flight_data_path = 'Heathrow Flights Test.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -124,6 +125,7 @@ def split_list(route_list, category, value):
 
 def optimise_perm(route_list):
     print('Optimising {} aircraft via permutations'.format(len(route_list)))
+    start_time = default_timer()
     initial_sigma = sigma_interval(route_list)
     optimum_order = []
     optimal_sigma = 0
@@ -132,71 +134,130 @@ def optimise_perm(route_list):
         if sigma_interval(i) < optimal_sigma or optimal_sigma == 0:
             optimum_order = list(i)
             optimal_sigma = sigma_interval(i)
-    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over starting order'
-          .format(optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+    end_time = default_timer()
+    time = round((end_time - start_time), 3)
+    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over starting order'
+          .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     if debugging is True:
         print('Optimum order: {}'.format(optimum_order))
     return optimum_order
 
 
-def swap(flight_list, i ,j):
+def swap(flight_list, i, j):
     flight_new = flight_list[:]
     flight_new[i], flight_new[j] = flight_new[j], flight_new[i]
     return flight_new
 
 
 def optimise_tabu(flight_list, iteration_percent, tenure_percent):
+    start_time = default_timer()
     iteration = 1
-    iteration_lim = math.floor(iteration_percent * len(flight_list))
-    tenure = math.floor(tenure_percent * len(flight_list))
+    iteration_lim = floor(iteration_percent * len(flight_list))
+    tenure = floor(tenure_percent * len(flight_list))
     tabu = []
+    initial_sigma = sigma_interval(flight_list)
+    current_solution = flight_list[:]
     optimal_solution = []
     optimal_sigma = 0
-    current_solution = flight_list[:]
-    initial_sigma = sigma_interval(current_solution)
 
     print('Optimising via tabu search: {} iterations, tenure length {}...'.format(iteration_lim, tenure))
     if debugging is True:
         print('Starting order: ', flight_list)
 
+    index = list(range(len(current_solution)))
+    index_pairs = []
+    for i in index[:- 1]:
+        for j in index[i + 1:]:
+            index_pairs.append([i, j])
+
     while iteration <= iteration_lim:
         if debugging is True:
             print('Beginning iteration {}...'.format(iteration))
             print('Current solution: {}'.format(current_solution))
-        index = list(range(len(current_solution)))
-        index_pairs = []
-        pairs_sigma = []
-        for i in index[:-1]:
-            for j in index[i+1:]:
-                index_pairs.append([i,j])
-        for i in index_pairs:
+        neighbourhood = index_pairs[:]
+        neighbourhood_sigma = []
+        for i in neighbourhood:
             if i in tabu:
-                index_pairs.remove(i)
-        for i in index_pairs:
-            pairs_sigma.append(sigma_interval(swap(current_solution, i[0], i[1])))
-        current_swap = index_pairs[pairs_sigma.index(min(pairs_sigma))]
+                neighbourhood.remove(i)
+        for i in neighbourhood:
+            neighbourhood_sigma.append(sigma_interval(swap(current_solution, i[0], i[1])))
+
+        current_swap = neighbourhood[neighbourhood_sigma.index(min(neighbourhood_sigma))]
         current_solution = swap(current_solution, current_swap[0], current_swap[1])
         current_sigma = sigma_interval(current_solution)
-        if debugging is True:
-            print('Best swap {}, with cumulative interval: {}s'.format(current_swap, current_sigma))
         tabu.append(current_swap)
         if len(tabu) > tenure:
             del tabu[0]
+
+        if debugging is True:
+            print('Best swap {}, with cumulative interval: {}s'.format(current_swap, current_sigma))
+            print('Tabu: {}'.format(tabu))
+
         if current_sigma < optimal_sigma or optimal_sigma == 0:
             optimal_sigma = current_sigma
             optimal_solution = current_solution[:]
             if debugging is True:
-                print('Tabu: {}'.format(tabu))
                 print('New optimal solution found: {}'.format(optimal_solution))
         iteration += 1
-    
-    print('Optimal order found with cumulative interval: {}s, resulting in improvement of {}% over starting order'
-          .format(optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+
+    end_time = default_timer()
+    time = round((end_time - start_time), 3)
+    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over starting order'
+          .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     return optimal_solution
 
 
+def optimise_annealing(flight_list, initial_temperature, temperature_model):
+    start_time = default_timer()
+    iteration = 1
+    initial_sigma = sigma_interval(flight_list)
+    current_solution = flight_list[:]
+    optimal_solution = []
+    optimal_sigma = 0
+    neighbourhood = []
+
+    temperature = initial_temperature
+    if temperature_model == 'Exponential':
+        def temperature_decrease(t, k):
+            current_temperature = t * (0.95 ** k)
+            return current_temperature
+    elif temperature_model == 'Fast':
+        def temperature_decrease(t, k):
+            current_temperature = t / iteration
+            return current_temperature
+    elif temperature_model == 'Boltzmann':
+        def temperature_decrease(t, k):
+            current_temperature = t / (log(k + 1))
+            return current_temperature
+    else:
+        print('Temperate decrease function unknown')
+        return
+
+    index = list(range(len(current_solution)))
+    for i in index[:- 1]:
+        for j in index[i + 1:]:
+            neighbourhood.append([i, j])
+
+
+
+    end_time = default_timer()
+    time = round((end_time - start_time), 3)
+    print('{}s'.format(time))
+
+
 import_data()
-optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8)
+'optimise_annealing(flight_data, 100)'
+'print(optimise_perm(flight_data))'
+'print(optimise_tabu(flight_data, 50, 0.8))'
+
+'''initial_temperature = 300
+temperature = initial_temperature
+iteration = 1
+while temperature > 20:
+    temperature = temperature_boltzmann(initial_temperature, iteration)
+    print(temperature)
+    iteration += 1
+print(iteration)'''
 
 
 # BPK/UMLAT: 186
