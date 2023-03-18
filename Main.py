@@ -1,6 +1,7 @@
 import csv
-from math import floor, log
 from itertools import permutations
+from math import exp, floor, log
+from random import choice, uniform
 from timeit import default_timer
 
 debugging = False
@@ -157,8 +158,8 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
     tabu = []
     initial_sigma = sigma_interval(flight_list)
     current_solution = flight_list[:]
-    optimal_solution = []
-    optimal_sigma = 0
+    optimal_solution = flight_list[:]
+    optimal_sigma = sigma_interval(optimal_solution)
 
     print('Optimising via tabu search: {} iterations, tenure length {}...'.format(iteration_lim, tenure))
     if debugging is True:
@@ -193,7 +194,7 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
             print('Best swap {}, with cumulative interval: {}s'.format(current_swap, current_sigma))
             print('Tabu: {}'.format(tabu))
 
-        if current_sigma < optimal_sigma or optimal_sigma == 0:
+        if current_sigma < optimal_sigma:
             optimal_sigma = current_sigma
             optimal_solution = current_solution[:]
             if debugging is True:
@@ -207,38 +208,66 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
     return optimal_solution
 
 
-def optimise_annealing(flight_list, initial_temperature, temperature_model):
+def optimise_annealing(flight_list, initial_temperature, end_temperature, temperature_model):
     start_time = default_timer()
     iteration = 1
     initial_sigma = sigma_interval(flight_list)
     current_solution = flight_list[:]
-    optimal_solution = []
-    optimal_sigma = 0
-    neighbourhood = []
-
+    current_sigma = sigma_interval(current_solution)
+    optimal_solution = flight_list[:]
+    optimal_sigma = sigma_interval(optimal_solution)
     temperature = initial_temperature
     if temperature_model == 'Exponential':
-        def temperature_decrease(t, k):
-            current_temperature = t * (0.95 ** k)
+        def temperature_decrease(initial_t, k):
+            current_temperature = initial_t * (0.95 ** k)
             return current_temperature
     elif temperature_model == 'Fast':
-        def temperature_decrease(t, k):
-            current_temperature = t / iteration
+        def temperature_decrease(initial_t, k):
+            current_temperature = initial_t / k
             return current_temperature
     elif temperature_model == 'Boltzmann':
-        def temperature_decrease(t, k):
-            current_temperature = t / (log(k + 1))
+        def temperature_decrease(initial_t, k):
+            current_temperature = initial_t / (log(k + 1))
             return current_temperature
     else:
-        print('Temperate decrease function unknown')
+        print('Error: Temperature decrease function {} is unknown'.format(temperature_model))
         return
 
+    def acceptance(delta, t):
+        probability = 1 / (exp(delta / t))
+        return probability
+
+    neighbourhood = []
     index = list(range(len(current_solution)))
     for i in index[:- 1]:
         for j in index[i + 1:]:
             neighbourhood.append([i, j])
 
+    while temperature > end_temperature:
+        accept_solution = False
+        print('Beginning iteration {}'.format(iteration))
+        print('Current solution {} with interval {}s'.format(current_solution, current_sigma))
+        while accept_solution is False:
+            candidate_swap = choice(neighbourhood)
+            candidate_solution = swap(current_solution, candidate_swap[0], candidate_swap[1])
+            candidate_sigma = sigma_interval(candidate_solution)
+            random_num = uniform(0,1)
+            if candidate_sigma < current_sigma:
+                current_solution = candidate_solution[:]
+                current_sigma = candidate_sigma
+                accept_solution = True
+                print('Better solution accepted with cumulative interval {}'.format(current_sigma))
+            elif random_num <= acceptance(candidate_sigma - current_sigma, temperature):
+                current_solution = candidate_solution[:]
+                current_sigma = candidate_sigma
+                accept_solution = True
+                print('Worse solution accepted with cumulative interval {}'.format(current_sigma))
+            else:
+                print('Worse solution not accepted')
 
+        temperature = temperature_decrease(initial_temperature, iteration)
+        iteration += 1
+    print(iteration)
 
     end_time = default_timer()
     time = round((end_time - start_time), 3)
@@ -249,6 +278,7 @@ import_data()
 'optimise_annealing(flight_data, 100)'
 'print(optimise_perm(flight_data))'
 'print(optimise_tabu(flight_data, 50, 0.8))'
+print(optimise_annealing(flight_data, 250, 20, 'Boltzmann'))
 
 '''initial_temperature = 300
 temperature = initial_temperature
