@@ -7,7 +7,7 @@ from timeit import default_timer
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights Test.csv'
+flight_data_path = 'Heathrow Flights.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -209,7 +209,12 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
 
 
 def optimise_annealing(flight_list, initial_temperature, end_temperature, temperature_model):
+    print('Optimising via simulated annealing: initial temperature {}, end temperature {}, {} decrease function...'
+          .format(initial_temperature, end_temperature, temperature_model))
+    if debugging is True:
+        print('Starting order: ', flight_list)
     start_time = default_timer()
+
     iteration = 1
     initial_sigma = sigma_interval(flight_list)
     current_solution = flight_list[:]
@@ -217,17 +222,17 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
     optimal_solution = flight_list[:]
     optimal_sigma = sigma_interval(optimal_solution)
     temperature = initial_temperature
-    if temperature_model == 'Exponential':
-        def temperature_decrease(initial_t, k):
-            current_temperature = initial_t * (0.95 ** k)
+    if temperature_model == 'exponential':
+        def temperature_decrease(k):
+            current_temperature = initial_temperature * (0.95 ** k)
             return current_temperature
-    elif temperature_model == 'Fast':
-        def temperature_decrease(initial_t, k):
-            current_temperature = initial_t / k
+    elif temperature_model == 'fast':
+        def temperature_decrease(k):
+            current_temperature = initial_temperature / k
             return current_temperature
     elif temperature_model == 'Boltzmann':
-        def temperature_decrease(initial_t, k):
-            current_temperature = initial_t / (log(k + 1))
+        def temperature_decrease(k):
+            current_temperature = initial_temperature / (log(k + 1))
             return current_temperature
     else:
         print('Error: Temperature decrease function {} is unknown'.format(temperature_model))
@@ -245,40 +250,45 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
 
     while temperature > end_temperature:
         accept_solution = False
-        print('Beginning iteration {}'.format(iteration))
-        print('Current solution {} with interval {}s'.format(current_solution, current_sigma))
+        if debugging is True:
+            print('Beginning iteration {}'.format(iteration))
         while accept_solution is False:
             candidate_swap = choice(neighbourhood)
             candidate_solution = swap(current_solution, candidate_swap[0], candidate_swap[1])
             candidate_sigma = sigma_interval(candidate_solution)
-            random_num = uniform(0,1)
             if candidate_sigma < current_sigma:
                 current_solution = candidate_solution[:]
                 current_sigma = candidate_sigma
                 accept_solution = True
-                print('Better solution accepted with cumulative interval {}'.format(current_sigma))
-            elif random_num <= acceptance(candidate_sigma - current_sigma, temperature):
+                if debugging is True:
+                    print('Better solution accepted with cumulative interval {}s'.format(current_sigma))
+            elif uniform(0, 1) <= acceptance(candidate_sigma - current_sigma, temperature):
                 current_solution = candidate_solution[:]
                 current_sigma = candidate_sigma
                 accept_solution = True
-                print('Worse solution accepted with cumulative interval {}'.format(current_sigma))
-            else:
+                if debugging is True:
+                    print('Worse solution accepted with cumulative interval {}s'.format(current_sigma))
+            elif debugging is True:
                 print('Worse solution not accepted')
-
-        temperature = temperature_decrease(initial_temperature, iteration)
+        if current_sigma < optimal_sigma:
+            optimal_solution = current_solution[:]
+            optimal_sigma = current_sigma
+            if debugging is True:
+                print('New optimal solution found with cumulative interval {}s'.format(optimal_sigma))
+        temperature = temperature_decrease(iteration)
         iteration += 1
-    print(iteration)
 
     end_time = default_timer()
     time = round((end_time - start_time), 3)
-    print('{}s'.format(time))
+    print('Optimal order found, {} iterations, in {}s. Cumulative interval {}s, improvement of {}% over starting order'
+          .format(iteration, time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+    return optimal_solution
 
 
 import_data()
-'optimise_annealing(flight_data, 100)'
 'print(optimise_perm(flight_data))'
-'print(optimise_tabu(flight_data, 50, 0.8))'
-print(optimise_annealing(flight_data, 250, 20, 'Boltzmann'))
+'print(optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8))'
+print(optimise_annealing(flight_data, 3400, 0.5, 'fast'))
 
 '''initial_temperature = 300
 temperature = initial_temperature
