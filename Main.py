@@ -289,18 +289,3 @@ import_data()
 'print(optimise_perm(flight_data))'
 'print(optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8))'
 print(optimise_annealing(flight_data, 3400, 0.5, 'fast'))
-
-'''initial_temperature = 300
-temperature = initial_temperature
-iteration = 1
-while temperature > 20:
-    temperature = temperature_boltzmann(initial_temperature, iteration)
-    print(temperature)
-    iteration += 1
-print(iteration)'''
-
-
-# BPK/UMLAT: 186
-# CPT/GOGSI: 110
-# MAXIT: 92
-# DET: 169
