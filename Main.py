@@ -1,6 +1,7 @@
 import csv
 from itertools import permutations
-from math import exp, floor, log
+from mpmath import exp
+from math import floor, log
 from random import choice, uniform
 from timeit import default_timer
 
@@ -208,7 +209,7 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
     return optimal_solution
 
 
-def optimise_annealing(flight_list, initial_temperature, end_temperature, temperature_model):
+def optimise_annealing(flight_list, initial_temperature, end_temperature, temperature_model, iteration_lim):
     print('Optimising via simulated annealing: initial temperature {}, end temperature {}, {} decrease function...'
           .format(initial_temperature, end_temperature, temperature_model))
     if debugging is True:
@@ -248,7 +249,7 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
         for j in index[i + 1:]:
             neighbourhood.append([i, j])
 
-    while temperature > end_temperature:
+    while temperature > end_temperature and iteration < iteration_lim:
         accept_solution = False
         if debugging is True:
             print('Beginning iteration {}'.format(iteration))
@@ -288,4 +289,4 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
 import_data()
 'print(optimise_perm(flight_data))'
 'print(optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8))'
-print(optimise_annealing(flight_data, 3400, 0.5, 'fast'))
+print(optimise_annealing(flight_data, 15000, 0.1, 'fast', 200000))
