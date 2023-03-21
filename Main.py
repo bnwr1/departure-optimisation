@@ -47,7 +47,6 @@ def import_data():
         for j in wake_cat_list:
             if ac_data[i][2] == j:
                 ac_data[i][2] = wake_cat_list.index(j)
-    print('{} aircraft imported'.format(len(ac_data)))
 
     for i in range(len(flight_data)):
         for j in sid_list:
@@ -57,7 +56,8 @@ def import_data():
             if flight_data[i][1] == j[0]:
                 flight_data[i].append(j[2])
                 flight_data[i].append(j[1])
-    print('{} flights imported'.format(len(flight_data)))
+
+    print('{} aircraft and {} flights imported successfully'.format(len(ac_data), len(flight_data)))
 
 
 def route_sep(flight_list, leader_i, follower_i):
@@ -138,7 +138,7 @@ def optimise_perm(flight_list):
             optimal_sigma = sigma_interval(i)
     end_time = default_timer()
     time = round((end_time - start_time), 3)
-    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over starting order'
+    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over given order'
           .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     if debugging is True:
         print('Optimum order: {}'.format(optimum_order))
@@ -204,7 +204,7 @@ def optimise_tabu(flight_list, iteration_percent, tenure_percent):
 
     end_time = default_timer()
     time = round((end_time - start_time), 3)
-    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over starting order'
+    print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over given order'
           .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     return optimal_solution
 
@@ -281,24 +281,41 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
 
     end_time = default_timer()
     time = round((end_time - start_time), 3)
-    print('Optimal order found, {} iterations, in {}s. Cumulative interval {}s, improvement of {}% over starting order'
+    print('Optimal order found, {} iterations, in {}s. Cumulative interval {}s, improvement of {}% over given order'
           .format(iteration, time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     return optimal_solution
 
 
 def optimise(flight_list, iteration_lim):
+    start_time = default_timer()
     initial_sigma = sigma_interval(flight_list)
     optimal_solution = flight_list[:]
     optimal_sigma = sigma_interval(optimal_solution)
     current_solution = flight_list[:]
     iteration = 1
-    while iteration <= iteration_lim:
+    change_count = 0
+
+    while iteration <= iteration_lim and change_count < 3:
+        if iteration == 1:
+            print('Beginning iteration {} of {}:'.format(iteration, iteration_lim))
+        else:
+            print('Re-annealing and beginning iteration {} of {}:'.format(iteration, iteration_lim))
         current_solution = optimise_annealing(current_solution, 3000, 0.1, 'fast', 200000)
         current_sigma = sigma_interval(current_solution)
         if current_sigma < optimal_sigma:
             optimal_solution = current_solution[:]
             optimal_sigma = current_sigma
+            change_count = 0
+        elif current_sigma == optimal_sigma:
+            change_count += 1
         iteration += 1
+
+    if change_count == 3:
+        print('Terminated due to 3 consecutive failures to improve the solution')
+    end_time = default_timer()
+    time = round((end_time - start_time), 3)
+    print('Final solution found in {}s. Cumulative interval {}, improvement of {}% over given order'
+          .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     return optimal_solution
 
 
@@ -306,4 +323,4 @@ import_data()
 'print(optimise_perm(split_list(flight_data, 4, 4)))'
 'print(optimise_tabu(split_list(flight_data, 4, 0), 50, 0.8))'
 '''print(optimise_annealing(split_list(flight_data, 4, 3), 3000, 0.1, 'fast', 200000))'''
-print(optimise(flight_data, 5))
+print(optimise(flight_data, 15))
