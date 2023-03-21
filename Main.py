@@ -60,52 +60,52 @@ def import_data():
     print('{} flights imported'.format(len(flight_data)))
 
 
-def route_sep(route_list, leader_i, follower_i):
-    l_sid = route_list[leader_i][3]
-    f_sid = route_list[follower_i][3]
+def route_sep(flight_list, leader_i, follower_i):
+    l_sid = flight_list[leader_i][3]
+    f_sid = flight_list[follower_i][3]
     return route_sep_matrix[f_sid][l_sid]
 
 
-def wake_sep(route_list, leader_i, follower_i):
-    l_group = route_list[leader_i][4]
-    f_group = route_list[follower_i][4]
+def wake_sep(flight_list, leader_i, follower_i):
+    l_group = flight_list[leader_i][4]
+    f_group = flight_list[follower_i][4]
     return wake_sep_matrix[f_group][l_group]
 
 
-def speed_sep(route_list, leader_i, follower_i):
-    sep = route_list[follower_i][5] - route_list[leader_i][5]
+def speed_sep(flight_list, leader_i, follower_i):
+    sep = flight_list[follower_i][5] - flight_list[leader_i][5]
     if sep < 0:
         return 0
     else:
         return sep * 60
 
 
-def interval(route_list, leader_i, follower_i):
-    sep_list = [route_sep(route_list, leader_i, follower_i), wake_sep(route_list, leader_i, follower_i),
-                speed_sep(route_list, leader_i, follower_i)]
+def interval(flight_list, leader_i, follower_i):
+    sep_list = [route_sep(flight_list, leader_i, follower_i), wake_sep(flight_list, leader_i, follower_i),
+                speed_sep(flight_list, leader_i, follower_i)]
     if debugging is True:
         constraint = ''
         if sep_list.index(max(sep_list)) == 0:
             constraint = 'route separation'
         elif sep_list.index(max(sep_list)) == 1:
             constraint = 'wake separation'
-        elif sep_list.index(max(sep_list)) == 1:
+        elif sep_list.index(max(sep_list)) == 2:
             constraint = 'speed separation'
-        print('{}, {}, {}s due {}'.format(route_list[leader_i][0],
-                                          route_list[follower_i][0], max(sep_list), constraint))
+        print('{}, {}, {}s due {}'.format(flight_list[leader_i][0],
+                                          flight_list[follower_i][0], max(sep_list), constraint))
     return max(sep_list)
 
 
-def sigma_interval(route_list):
+def sigma_interval(flight_list):
     sigma = 0
-    for i in range(len(route_list) - 1):
-        sigma += interval(route_list, i, i + 1)
+    for i in range(len(flight_list) - 1):
+        sigma += interval(flight_list, i, i + 1)
     if debugging is True:
         print('Cumulative interval: {}s'.format(sigma))
     return sigma
 
 
-def split_list(route_list, category, value):
+def split_list(flight_list, category, value):
     category_text = ''
     value_text = ''
     if category == 3:
@@ -119,19 +119,19 @@ def split_list(route_list, category, value):
         value_text = str(value)
     print('Filtering data via {}: {}'.format(category_text, value_text))
     sublist = []
-    for i in route_list:
+    for i in flight_list:
         if i[category] == value:
             sublist.append(i)
     return sublist
 
 
-def optimise_perm(route_list):
-    print('Optimising {} aircraft via permutations'.format(len(route_list)))
+def optimise_perm(flight_list):
+    print('Optimising {} aircraft via permutations'.format(len(flight_list)))
     start_time = default_timer()
-    initial_sigma = sigma_interval(route_list)
+    initial_sigma = sigma_interval(flight_list)
     optimum_order = []
     optimal_sigma = 0
-    perm = permutations(route_list)
+    perm = permutations(flight_list)
     for i in perm:
         if sigma_interval(i) < optimal_sigma or optimal_sigma == 0:
             optimum_order = list(i)
@@ -249,7 +249,7 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
         for j in index[i + 1:]:
             neighbourhood.append([i, j])
 
-    while temperature > end_temperature and iteration < iteration_lim:
+    while end_temperature <= temperature and iteration <= iteration_lim:
         accept_solution = False
         if debugging is True:
             print('Beginning iteration {}'.format(iteration))
@@ -286,7 +286,24 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
     return optimal_solution
 
 
+def optimise(flight_list, iteration_lim):
+    initial_sigma = sigma_interval(flight_list)
+    optimal_solution = flight_list[:]
+    optimal_sigma = sigma_interval(optimal_solution)
+    current_solution = flight_list[:]
+    iteration = 1
+    while iteration <= iteration_lim:
+        current_solution = optimise_annealing(current_solution, 3000, 0.1, 'fast', 200000)
+        current_sigma = sigma_interval(current_solution)
+        if current_sigma < optimal_sigma:
+            optimal_solution = current_solution[:]
+            optimal_sigma = current_sigma
+        iteration += 1
+    return optimal_solution
+
+
 import_data()
-'print(optimise_perm(flight_data))'
-'print(optimise_tabu(split_list(flight_data, 4, 2), 50, 0.8))'
-print(optimise_annealing(flight_data, 15000, 0.1, 'fast', 200000))
+'print(optimise_perm(split_list(flight_data, 4, 4)))'
+'print(optimise_tabu(split_list(flight_data, 4, 0), 50, 0.8))'
+'''print(optimise_annealing(split_list(flight_data, 4, 3), 3000, 0.1, 'fast', 200000))'''
+print(optimise(flight_data, 5))
