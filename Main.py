@@ -8,7 +8,7 @@ from timeit import default_timer
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights Test.csv'
+flight_data_path = 'Heathrow Flights.csv'
 export_data_path = 'Heathrow Flights Ordered.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
@@ -64,7 +64,7 @@ def import_data():
 
 
 def export_data(optimum_solution):
-    writer = csv.writer(open(export_data_path, 'w'))
+    writer = csv.writer(open(export_data_path, 'w', encoding='UTF8'))
     for i in optimum_solution:
         writer.writerow(i[0:3])
     open(export_data_path, 'w').close()
@@ -340,9 +340,8 @@ def optimise(flight_list, change_count_lim):
 
 
 flight_data = import_data()
-optimum_order = (optimise(flight_data, 3))
+optimum_order = optimise(flight_data, 3)
 print(optimum_order)
-for i in optimum_order:
-    print(i[0:3])
+export_data(optimum_order)
 
-# 36080s
+# 36060s
