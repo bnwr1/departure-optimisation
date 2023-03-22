@@ -337,4 +337,4 @@ solution = optimise(flight_data, 3)
 print(solution)
 export_data(solution, 'Heathrow Flights Ordered.csv')
 
-# 36040s
+# 36020s
