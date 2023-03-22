@@ -9,7 +9,7 @@ debugging = False
 
 ac_data_path = 'Aircraft List.csv'
 flight_data_path = 'Heathrow Flights Test.csv'
-export_data_path = 'Heathrow Flights Ordered.csv.csv'
+export_data_path = 'Heathrow Flights Ordered.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
