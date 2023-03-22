@@ -8,7 +8,8 @@ from timeit import default_timer
 debugging = False
 
 ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights.csv'
+flight_data_path = 'Heathrow Flights Test.csv'
+export_data_path = 'Heathrow Flights Ordered.csv.csv'
 
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
@@ -34,13 +35,14 @@ wake_sep_matrix = [
 
 def import_data():
     # Imports flight data as [Call-sign, A/C Type, SID, SID Index, Wake Category Index, Speed Group]
-    global flight_data
 
     print('Importing flight schedule and aircraft data...')
     reader = csv.reader(open(ac_data_path, 'r'))
     ac_data = list(reader)
+    open(ac_data_path, 'r').close()
     reader = csv.reader(open(flight_data_path, 'r'))
     flight_data = list(reader)
+    open(flight_data_path, 'r').close()
 
     for i in range(len(ac_data)):
         ac_data[i][1] = int(ac_data[i][1])
@@ -58,6 +60,14 @@ def import_data():
                 flight_data[i].append(j[1])
 
     print('{} aircraft and {} flights imported successfully'.format(len(ac_data), len(flight_data)))
+    return flight_data
+
+
+def export_data(optimum_solution):
+    writer = csv.writer(open(export_data_path, 'w'))
+    for i in optimum_solution:
+        writer.writerow(i[0:3])
+    open(export_data_path, 'w').close()
 
 
 def route_sep(flight_list, leader_i, follower_i):
@@ -286,41 +296,53 @@ def optimise_annealing(flight_list, initial_temperature, end_temperature, temper
     return optimal_solution
 
 
-def optimise(flight_list, iteration_lim):
+def optimise(flight_list, change_count_lim):
     start_time = default_timer()
     initial_sigma = sigma_interval(flight_list)
-    optimal_solution = flight_list[:]
-    optimal_sigma = sigma_interval(optimal_solution)
-    current_solution = flight_list[:]
-    iteration = 1
-    change_count = 0
 
-    while iteration <= iteration_lim and change_count < 3:
-        if iteration == 1:
-            print('Beginning iteration {} of {}:'.format(iteration, iteration_lim))
-        else:
-            print('Re-annealing and beginning iteration {} of {}:'.format(iteration, iteration_lim))
-        current_solution = optimise_annealing(current_solution, 3000, 0.1, 'fast', 200000)
-        current_sigma = sigma_interval(current_solution)
-        if current_sigma < optimal_sigma:
-            optimal_solution = current_solution[:]
-            optimal_sigma = current_sigma
-            change_count = 0
-        elif current_sigma == optimal_sigma:
-            change_count += 1
-        iteration += 1
+    if len(flight_list) == 0:
+        print('Flight list is empty')
+        return
+    elif 0 < len(flight_list) <= 10:
+        optimal_solution = optimise_perm(flight_list)
+    elif 10 < len(flight_list) <= 25:
+        optimal_solution = optimise_tabu(flight_list, 50, 0.8)
+    elif len(flight_list) > 25:
+        optimal_solution = flight_list[:]
+        optimal_sigma = sigma_interval(optimal_solution)
+        current_solution = flight_list[:]
+        iteration = 1
+        change_count = 0
 
-    if change_count == 3:
-        print('Terminated due to 3 consecutive failures to improve the solution')
-    end_time = default_timer()
-    time = round((end_time - start_time), 3)
-    print('Final solution found in {}s. Cumulative interval {}, improvement of {}% over given order'
-          .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+        while change_count < change_count_lim:
+            if iteration == 1:
+                print('Beginning iteration {}...'.format(iteration))
+            else:
+                print('Re-annealing and beginning iteration {}...'.format(iteration))
+            current_solution = optimise_annealing(current_solution, 3000, 0.1, 'fast', 100000)
+            current_sigma = sigma_interval(current_solution)
+            if current_sigma < optimal_sigma:
+                optimal_solution = current_solution[:]
+                optimal_sigma = current_sigma
+                change_count = 0
+            elif current_sigma == optimal_sigma:
+                change_count += 1
+            iteration += 1
+
+        print('Terminated after {} iterations due to {} consecutive failures to improve the solution'
+              .format(iteration, change_count_lim))
+        end_time = default_timer()
+        time = round((end_time - start_time), 3)
+        print('Final solution found in {}s. Cumulative interval {}, improvement of {}% over starting order'
+              .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
+
     return optimal_solution
 
 
-import_data()
-'print(optimise_perm(split_list(flight_data, 4, 4)))'
-'print(optimise_tabu(split_list(flight_data, 4, 0), 50, 0.8))'
-'''print(optimise_annealing(split_list(flight_data, 4, 3), 3000, 0.1, 'fast', 200000))'''
-print(optimise(flight_data, 15))
+flight_data = import_data()
+optimum_order = (optimise(flight_data, 3))
+print(optimum_order)
+for i in optimum_order:
+    print(i[0:3])
+
+# 36080s
