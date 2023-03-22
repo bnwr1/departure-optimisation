@@ -332,9 +332,9 @@ def optimise(flight_list, change_count_lim):
     return optimal_solution
 
 
-flight_data = import_data('Heathrow Flights Test.csv', 'Aircraft List.csv')
+flight_data = import_data('Heathrow Flights.csv', 'Aircraft List.csv')
 solution = optimise(flight_data, 3)
 print(solution)
 export_data(solution, 'Heathrow Flights Ordered.csv')
 
-# 36060s
+# 36040s
