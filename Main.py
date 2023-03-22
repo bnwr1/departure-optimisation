@@ -7,10 +7,6 @@ from timeit import default_timer
 
 debugging = False
 
-ac_data_path = 'Aircraft List.csv'
-flight_data_path = 'Heathrow Flights.csv'
-export_data_path = 'Heathrow Flights Ordered.csv'
-
 wake_cat_list = ['J', 'H', 'U', 'M', 'S', 'L']
 sid_list = ['BPK', 'UMLAT', 'CPT', 'GOGSI', 'MAXIT', 'DET']
 
@@ -33,66 +29,64 @@ wake_sep_matrix = [
 ]
 
 
-def import_data():
+def import_data(flight_data_path, ac_data_path):
     # Imports flight data as [Call-sign, A/C Type, SID, SID Index, Wake Category Index, Speed Group]
-
     print('Importing flight schedule and aircraft data...')
-    reader = csv.reader(open(ac_data_path, 'r'))
-    ac_data = list(reader)
-    open(ac_data_path, 'r').close()
-    reader = csv.reader(open(flight_data_path, 'r'))
-    flight_data = list(reader)
-    open(flight_data_path, 'r').close()
 
-    for i in range(len(ac_data)):
-        ac_data[i][1] = int(ac_data[i][1])
+    with open(flight_data_path, "r") as file:
+        reader = csv.reader(file, delimiter=',')
+        flight_list = list(reader)
+    with open(ac_data_path, "r") as file:
+        reader = csv.reader(file, delimiter=',')
+        ac_list = list(reader)
+
+    for i in range(len(ac_list)):
+        ac_list[i][1] = int(ac_list[i][1])
         for j in wake_cat_list:
-            if ac_data[i][2] == j:
-                ac_data[i][2] = wake_cat_list.index(j)
+            if ac_list[i][2] == j:
+                ac_list[i][2] = wake_cat_list.index(j)
 
-    for i in range(len(flight_data)):
+    for i in range(len(flight_list)):
         for j in sid_list:
-            if flight_data[i][2] == j:
-                flight_data[i].append(sid_list.index(j))
-        for j in ac_data:
-            if flight_data[i][1] == j[0]:
-                flight_data[i].append(j[2])
-                flight_data[i].append(j[1])
+            if flight_list[i][2] == j:
+                flight_list[i].append(sid_list.index(j))
+        for j in ac_list:
+            if flight_list[i][1] == j[0]:
+                flight_list[i].append(j[2])
+                flight_list[i].append(j[1])
 
-    print('{} aircraft and {} flights imported successfully'.format(len(ac_data), len(flight_data)))
-    return flight_data
-
-
-def export_data(optimum_solution):
-    writer = csv.writer(open(export_data_path, 'w', encoding='UTF8'))
-    for i in optimum_solution:
-        writer.writerow(i[0:3])
-    open(export_data_path, 'w').close()
+    print('{} aircraft and {} flights imported successfully'.format(len(ac_list), len(flight_list)))
+    return flight_list
 
 
-def route_sep(flight_list, leader_i, follower_i):
-    l_sid = flight_list[leader_i][3]
-    f_sid = flight_list[follower_i][3]
-    return route_sep_matrix[f_sid][l_sid]
-
-
-def wake_sep(flight_list, leader_i, follower_i):
-    l_group = flight_list[leader_i][4]
-    f_group = flight_list[follower_i][4]
-    return wake_sep_matrix[f_group][l_group]
-
-
-def speed_sep(flight_list, leader_i, follower_i):
-    sep = flight_list[follower_i][5] - flight_list[leader_i][5]
-    if sep < 0:
-        return 0
-    else:
-        return sep * 60
+def export_data(optimal_solution, export_data_path):
+    with open(export_data_path, "w") as file:
+        writer = csv.writer(file, delimiter=',')
+        for i in optimal_solution:
+            writer.writerow(i[:3])
 
 
 def interval(flight_list, leader_i, follower_i):
+    def route_sep(f_list, lead_i, follow_i):
+        l_sid = f_list[lead_i][3]
+        f_sid = f_list[follow_i][3]
+        return route_sep_matrix[f_sid][l_sid]
+
+    def wake_sep(f_list, lead_i, follow_i):
+        l_group = f_list[lead_i][4]
+        f_group = f_list[follow_i][4]
+        return wake_sep_matrix[f_group][l_group]
+
+    def speed_sep(f_list, lead_i, follow_i):
+        sep = f_list[follow_i][5] - f_list[lead_i][5]
+        if sep < 0:
+            return 0
+        else:
+            return sep * 60
+
     sep_list = [route_sep(flight_list, leader_i, follower_i), wake_sep(flight_list, leader_i, follower_i),
                 speed_sep(flight_list, leader_i, follower_i)]
+
     if debugging is True:
         constraint = ''
         if sep_list.index(max(sep_list)) == 0:
@@ -101,8 +95,8 @@ def interval(flight_list, leader_i, follower_i):
             constraint = 'wake separation'
         elif sep_list.index(max(sep_list)) == 2:
             constraint = 'speed separation'
-        print('{}, {}, {}s due {}'.format(flight_list[leader_i][0],
-                                          flight_list[follower_i][0], max(sep_list), constraint))
+        print('{}, {}, {}s due {}'
+              .format(flight_list[leader_i][0], flight_list[follower_i][0], max(sep_list), constraint))
     return max(sep_list)
 
 
@@ -139,20 +133,20 @@ def optimise_perm(flight_list):
     print('Optimising {} aircraft via permutations'.format(len(flight_list)))
     start_time = default_timer()
     initial_sigma = sigma_interval(flight_list)
-    optimum_order = []
-    optimal_sigma = 0
+    optimal_solution = flight_list[:]
+    optimal_sigma = sigma_interval(optimal_solution)
     perm = permutations(flight_list)
     for i in perm:
-        if sigma_interval(i) < optimal_sigma or optimal_sigma == 0:
-            optimum_order = list(i)
+        if sigma_interval(i) < optimal_sigma:
+            optimal_solution = list(i)
             optimal_sigma = sigma_interval(i)
     end_time = default_timer()
     time = round((end_time - start_time), 3)
     print('Optimal order found in {}s with cumulative interval {}s, resulting in improvement of {}% over given order'
           .format(time, optimal_sigma, round(100 - (optimal_sigma * 100 / initial_sigma), 2)))
     if debugging is True:
-        print('Optimum order: {}'.format(optimum_order))
-    return optimum_order
+        print('Optimum order: {}'.format(optimal_solution))
+    return optimal_solution
 
 
 def swap(flight_list, i, j):
@@ -302,7 +296,7 @@ def optimise(flight_list, change_count_lim):
 
     if len(flight_list) == 0:
         print('Flight list is empty')
-        return
+        optimal_solution = []
     elif 0 < len(flight_list) <= 10:
         optimal_solution = optimise_perm(flight_list)
     elif 10 < len(flight_list) <= 25:
@@ -313,7 +307,6 @@ def optimise(flight_list, change_count_lim):
         current_solution = flight_list[:]
         iteration = 1
         change_count = 0
-
         while change_count < change_count_lim:
             if iteration == 1:
                 print('Beginning iteration {}...'.format(iteration))
@@ -339,9 +332,9 @@ def optimise(flight_list, change_count_lim):
     return optimal_solution
 
 
-flight_data = import_data()
-optimum_order = optimise(flight_data, 3)
-print(optimum_order)
-export_data(optimum_order)
+flight_data = import_data('Heathrow Flights Test.csv', 'Aircraft List.csv')
+solution = optimise(flight_data, 3)
+print(solution)
+export_data(solution, 'Heathrow Flights Ordered.csv')
 
 # 36060s
